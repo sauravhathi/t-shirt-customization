@@ -1,24 +1,31 @@
 import Konva from "konva";
 import React, { useState, useRef, useEffect } from "react";
 import { Stage, Layer, Image, Transformer } from "react-konva";
+import { MdSave, MdDeleteForever } from "react-icons/md";
 
-const CustomizeImage = ({ image = '/white.png', layerImage }: { image?: string, layerImage: HTMLImageElement | null }) => {
-    // const [tshirtImage] = useState(new window.Image());
-    const [tshirtImage] = useState( () => 
-    {
+type CustomizeImageProps = {
+    side: string;
+    layerImage: HTMLImageElement | null;
+    actionType: 'delete-front' | 'delete-back' | 'download-front' | 'download-back' | null;
+    type: 'front' | 'back';
+};
+
+
+const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImageProps) => {
+
+    const [tshirtImage, setTshirtImage] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             const image = new window.Image();
-            image.src = '/white.png';
-            return image;
+            image.src = side;
+            setTshirtImage(image);
         }
-    });
-
-    const [selectedId, selectShape] = useState<string | null>(null);
-    const [nodes, setNodes] = useState<any[]>([]);
+    }, [side]);
 
     const shapRef = useRef<Konva.Image>(null);
     const layerRef = useRef<Konva.Layer>(null);
-    const trRef = useRef<Konva.Transformer>(null);
+    const tr = useRef<Konva.Transformer>(new Konva.Transformer({}));
 
     useEffect(() => {
         if (layerImage) {
@@ -29,119 +36,91 @@ const CustomizeImage = ({ image = '/white.png', layerImage }: { image?: string, 
                 width: 200,
                 height: 200,
                 draggable: true,
-                id: 'image',
+                id: 'sticker' + type
             });
 
-            setNodes([imageNode]);
-
-            trRef.current?.nodes([imageNode]);
-            
-            layerRef.current?.add(imageNode);
-            layerRef.current?.batchDraw();
-
+            if (layerRef.current) {
+                // remove old one 
+                const findSticker = layerRef.current.findOne('#sticker' + type) as Konva.Image;
+                findSticker?.destroy();
+                layerRef.current.add(tr.current);
+                tr.current.nodes([imageNode]);
+                layerRef.current.add(imageNode);
+                layerRef.current.batchDraw();
+            }
 
         }
-    }
-        , [layerImage]);
+    }, [layerImage])
 
-    const save = () => {
-        trRef.current?.nodes([]);
-        trRef.current?.getLayer()?.batchDraw();
+    const handleDownload = (deleteType: 'front' | 'back') => {
+        const dataURL = layerRef.current?.toDataURL();
+        const link = document.createElement('a');
+        link.download = 'sticker' + deleteType + '.png';
+        link.href = dataURL as string;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    const edit = () => {
-        trRef.current?.nodes(nodes as any);
-        trRef.current?.getLayer()?.batchDraw();
+    const handleDelete = (downloadType: 'front' | 'back') => {
+        const findSticker = layerRef.current?.findOne('#sticker' + downloadType) as Konva.Image;
+        findSticker?.destroy();
+        layerRef.current?.batchDraw();
     }
 
-    // when user press delte btn then delete 
-    // useEffect(() => {
-    //     const handleDelete = (e: any) => {
-    //         if (e.keyCode === 46) {
-    //             console.log('delete');
-    //             console.log(e);
-    //             const stage = e.target.getStage();
-    //             const selectedNode = stage.findOne(`#${selectedId}`);
-    //             selectedNode?.destroy();
-    //             layerRef.current?.batchDraw();
-    //         }
-    //     };
-    //     window.addEventListener('keydown', handleDelete);
-    //     return () => {
-    //         window.removeEventListener('keydown', handleDelete);
-    //     };
-    // }, [selectedId]);
+    let isCalled = false;
+
+    useEffect(() => {
+        if (!isCalled && actionType) {
+            isCalled = true;
+            const action = actionType.split('-') as any;
+            console.log(action)
+            if (action[0] === 'delete') {
+                handleDelete(action[1]);
+            } else if (action[0] === 'download') {
+                handleDownload(action[1]);
+            }
+        }
+
+    }, [actionType])
+
+    useEffect(() => {
+        if (layerRef.current) {
+            layerRef.current.on('mouseover', (e) => {
+                const findSticker = e.target.getStage()?.findOne('#sticker' + type) as Konva.Image;
+                layerRef.current?.add(tr.current);
+                tr.current.nodes([findSticker]);
+                layerRef.current?.batchDraw();
+            });
+
+            layerRef.current.on('mouseout', (e) => {
+                layerRef.current?.add(tr.current);
+                tr.current.nodes([]);
+                layerRef.current?.batchDraw();
+            });
+        }
+    }, [layerRef.current]);
 
     return (
-        <div className="max-w-[500px] mx-auto"
+        <Stage
+            width={400}
+            height={400}
+            id={type}
         >
-            <button
-                onClick={save}
+            <Layer
+                ref={layerRef}
             >
-                Save
-            </button>
-            <button
-                onClick={edit}
-            >
-                Edit
-            </button>
-            <Stage
-                width={500}
-                height={500}
-                className="p-2"
-            >
-                <Layer
-                    ref={layerRef}
-                >
 
-                    <Image
-                        image={tshirtImage}
-                        width={500}
-                        height={500}
-                        fill="white"
-                        stroke="gray"
-                        ref={shapRef}
-                        id="tshirt"
-                    />
-                    {
-                        (
-                            <Transformer
-                                ref={trRef}
-                                boundBoxFunc={(oldBox: any, newBox: any) => {
-                                    if (newBox.width < 5 || newBox.height < 5) {
-                                        return oldBox;
-                                    }
-                                    return newBox;
-                                }}
-                                onTransformEnd={() => {
-                                    const node = shapRef.current;
-                                    const scaleX = node?.scaleX();
-                                    const scaleY = node?.scaleY();
-
-                                    node?.scaleX(1);
-                                    node?.scaleY(1);
-                                    node?.width(node?.width()! * scaleX!);
-                                    node?.height(node?.height()! * scaleY!);
-
-                                    node?.x(node?.x()! + (node?.width()! * scaleX! - node?.width()!) / 2);
-                                    node?.y(node?.y()! + (node?.height()! * scaleY! - node?.height()!) / 2);
-
-                                    node?.scaleX(1);
-                                    node?.scaleY(1);
-
-                                    layerRef.current?.batchDraw();
-
-
-                                }}
-                                // onTap={() => {
-                                //     console.log('drag end');
-                                // }}
-                            />
-                        )
-                    }
-                </Layer>
-            </Stage>
-        </div>
+                <Image
+                    image={tshirtImage as any}
+                    width={400}
+                    height={400}
+                    fill="white"
+                    ref={shapRef}
+                    id={type}
+                />
+            </Layer>
+        </Stage>
     );
 }
 
