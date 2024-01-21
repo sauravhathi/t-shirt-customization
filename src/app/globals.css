@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.konvajs-content {
+    border: 1px solid gray;
+    border-radius: 5px;
+    width: fit-content !important;
+    height: 400px;
+}
+
+canvas {
+    padding: 10px !important;
+    position: relative !important;
+    top: 0;
+    left: 0;
+    width: auto !important;
+    height: 100% !important;
+}
+
+#front,#back {
+    width: fit-content;
+    height: auto;
+    background-color: #fff;
+    overflow: hidden;
+}
