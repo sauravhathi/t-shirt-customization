@@ -41,8 +41,8 @@ export default function Home() {
         <div className="flex md:flex-col gap-2 w-20 md:w-full">
           <CustomizeImageBtn onClick={() => setActiveSide('front')} title="Front" className="font-semibold">Front</CustomizeImageBtn>
           <CustomizeImageBtn onClick={() => setActiveSide('back')} title="Back" className="font-semibold">Back</CustomizeImageBtn>
-          <CustomizeImageBtn onClick={() => setActionType('delete' + activeSide as any)} title="Delete" className="flex items-center justify-center"><MdDeleteForever size={20} /></CustomizeImageBtn>
-          <CustomizeImageBtn onClick={() => setActionType('download' + activeSide as any)} title="Download" className="flex items-center justify-center"><MdSave size={20} /></CustomizeImageBtn>
+          <CustomizeImageBtn onClick={() => setActionType('delete-' + activeSide as any)} title="Delete" className="flex items-center justify-center"><MdDeleteForever size={20} /></CustomizeImageBtn>
+          <CustomizeImageBtn onClick={() => setActionType('download-' + activeSide as any)} title="Download" className="flex items-center justify-center"><MdSave size={20} /></CustomizeImageBtn>
         </div>
         <div className="flex-1 flex flex-col gap-5">
           <div className={activeSide === 'front' ? '' : 'hidden'}>
