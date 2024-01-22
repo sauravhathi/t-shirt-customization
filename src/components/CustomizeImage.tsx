@@ -10,9 +10,44 @@ type CustomizeImageProps = {
     type: 'front' | 'back';
 };
 
+const resizeImage = (image: HTMLImageElement) => {
+    if (image.width !== image.height) {
+        const ratio = image.width / image.height;
+        if (ratio > 1) {
+            return {
+                width: 200,
+                height: 200 / ratio,
+            };
+        } else {
+            return {
+                width: 200 * ratio,
+                height: 200,
+            };
+        }
+    } else {
+        return {
+            width: 200,
+            height: 200,
+        };
+    }
+};
 
 const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImageProps) => {
-
+    const [layerImages, setLayerImages] = useState<
+        {
+            id: string;
+            image: HTMLImageElement | null;
+        }[]
+    >([
+        {
+            id: "front",
+            image: null,
+        },
+        {
+            id: "back",
+            image: null,
+        },
+    ]);
     const [tshirtImage, setTshirtImage] = useState<HTMLImageElement | null>(null);
 
     useEffect(() => {
@@ -33,14 +68,24 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
                 x: 50,
                 y: 50,
                 image: layerImage,
-                width: 200,
-                height: 200,
+                width: resizeImage(layerImage).width,
+                height: resizeImage(layerImage).height,
                 draggable: true,
                 id: 'sticker' + type
             });
 
-            if (layerRef.current) {
-                // remove old one 
+            if (layerRef.current && imageNode) {
+                setLayerImages((prev: any) => {
+                    return prev.map((layer: any) => {
+                        if (layer.id === type) {
+                            return {
+                                ...layer,
+                                image: layerImage,
+                            };
+                        }
+                        return layer;
+                    });
+                });
                 const findSticker = layerRef.current.findOne('#sticker' + type) as Konva.Image;
                 findSticker?.destroy();
                 layerRef.current.add(tr.current);
@@ -52,27 +97,48 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
         }
     }, [layerImage])
 
-    const handleDownload = (deleteType: 'front' | 'back') => {
-        const dataURL = layerRef.current?.toDataURL();
-        const link = document.createElement('a');
-        link.download = 'sticker' + deleteType + '.png';
-        link.href = dataURL as string;
+    const getValidImages = () => layerImages.filter((layer) => layer.id && layer.image);
+
+    const removeLine = () => {
+        layerRef.current?.add(tr.current);
+        tr.current.nodes([]);
+        layerRef.current?.batchDraw();
+    }
+
+    const downloadURI = (uri: string, name: string) => {
+        const link = document.createElement("a");
+        link.download = name;
+        link.href = uri;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     }
 
-    const handleDelete = (downloadType: 'front' | 'back') => {
-        const findSticker = layerRef.current?.findOne('#sticker' + downloadType) as Konva.Image;
-        findSticker?.destroy();
-        layerRef.current?.batchDraw();
+    const handleDownload = (downloadType: 'front' | 'back') => {
+        const validImages = getValidImages();
+        removeLine();
+        const validImageURL = layerRef.current?.toDataURL();
+
+        validImages.forEach((layer) => {
+            const fileName = `sticker${layer.id}.png`;
+            downloadURI(validImageURL as string, fileName);
+        });
+    }
+
+    const handleDelete = (deleteType: 'front' | 'back') => {
+        const validImages = getValidImages();
+
+        validImages.forEach((layer) => {
+            const findSticker = layerRef.current?.findOne(`#sticker${layer.id}`) as Konva.Image;
+            findSticker?.destroy();
+            layerRef.current?.batchDraw();
+        });
     }
 
     let isCalled = false;
 
     useEffect(() => {
-        if (!isCalled && actionType) {
-            isCalled = true;
+        if (actionType) {
             const action = actionType.split('-') as any;
             console.log(action)
             if (action[0] === 'delete') {
@@ -81,7 +147,6 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
                 handleDownload(action[1]);
             }
         }
-
     }, [actionType])
 
     useEffect(() => {
@@ -94,9 +159,7 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
             });
 
             layerRef.current.on('mouseout', (e) => {
-                layerRef.current?.add(tr.current);
-                tr.current.nodes([]);
-                layerRef.current?.batchDraw();
+                removeLine();
             });
         }
     }, [layerRef.current]);
