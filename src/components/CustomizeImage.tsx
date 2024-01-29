@@ -1,7 +1,6 @@
 import Konva from "konva";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import { Stage, Layer, Image, Transformer } from "react-konva";
-import { MdSave, MdDeleteForever } from "react-icons/md";
 
 type CustomizeImageProps = {
     side: string;
@@ -117,7 +116,7 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
     const handleDownload = (downloadType: 'front' | 'back') => {
         const validImages = getValidImages();
         removeLine();
-        const validImageURL = layerRef.current?.toDataURL();
+        const validImageURL = layerRef.current?.toDataURL({ pixelRatio: 3 });
 
         validImages.forEach((layer) => {
             const fileName = `sticker${layer.id}.png`;
@@ -129,9 +128,22 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
         const validImages = getValidImages();
 
         validImages.forEach((layer) => {
-            const findSticker = layerRef.current?.findOne(`#sticker${layer.id}`) as Konva.Image;
-            findSticker?.destroy();
-            layerRef.current?.batchDraw();
+            if (layer.id === deleteType) {
+                const findSticker = layerRef.current?.findOne(`#sticker${layer.id}`) as Konva.Image;
+                setLayerImages((prev: any) => {
+                    return prev.map((layer: any) => {
+                        if (layer.id === deleteType) {
+                            return {
+                                ...layer,
+                                image: null,
+                            };
+                        }
+                        return layer;
+                    });
+                });
+                findSticker?.destroy();
+                layerRef.current?.batchDraw();
+            }
         });
     }
 
@@ -140,7 +152,6 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
     useEffect(() => {
         if (actionType) {
             const action = actionType.split('-') as any;
-            console.log(action)
             if (action[0] === 'delete') {
                 handleDelete(action[1]);
             } else if (action[0] === 'download') {
@@ -151,14 +162,19 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
 
     useEffect(() => {
         if (layerRef.current) {
-            layerRef.current.on('mouseover', (e) => {
+            layerRef.current.on('mouseover', (e: any) => {
                 const findSticker = e.target.getStage()?.findOne('#sticker' + type) as Konva.Image;
-                layerRef.current?.add(tr.current);
-                tr.current.nodes([findSticker]);
-                layerRef.current?.batchDraw();
+
+                if (findSticker) {
+                    if (tr.current) {
+                        layerRef.current?.add(tr.current);
+                        tr.current.nodes([findSticker]);
+                        layerRef.current?.batchDraw();
+                    }
+                }
             });
 
-            layerRef.current.on('mouseout', (e) => {
+            layerRef.current.on('mouseout', (e: any) => {
                 removeLine();
             });
         }
@@ -187,4 +203,4 @@ const CustomizeImage = ({ side, layerImage, actionType, type }: CustomizeImagePr
     );
 }
 
-export default CustomizeImage;
+export default memo(CustomizeImage);
